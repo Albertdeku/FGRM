@@ -1,12 +1,15 @@
+import HelpPage from "../components/HelpPage";
 import Slides from "../components/Slides";
+import Slogan from "../components/Slogan";
 import Support from "../components/Support";
 
 const Home = () => {
   return (
     <div className="page">
-      {/* <h1 className="text-center positio">Home</h1> */}
       <Slides />
       <Support />
+      <HelpPage />
+      <Slogan />
     </div>
   );
 };

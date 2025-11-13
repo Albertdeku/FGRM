@@ -1,37 +1,103 @@
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
-import { LogIn, UserPlus, Sparkles } from "lucide-react"; // Import correct icons for button
+import { LogIn, UserPlus, Zap, Moon } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-// --- Validation and Types (Unchanged, as they are professional) ---
-const AuthSchema = z
-  .object({
-    name: z.string().min(1, "Name is required").optional(),
-    email: z.string().email("Invalid email address"),
-    password: z.string().min(6, "Password must be at least 6 characters"),
-    confirmPassword: z.string().optional(),
-  })
-  .refine(
-    (data) =>
-      !data.confirmPassword ||
-      data.password === data.confirmPassword ||
-      !data.password,
-    {
-      message: "Passwords do not match",
-      path: ["confirmPassword"],
-    }
-  );
+// --- Validation and Types ---
+const LoginSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
 
-type AuthFormData = z.infer<typeof AuthSchema>;
+const SignupSchema = z
+  .object({
+    email: z.string().email("Invalid email address"),
+    phoneNumber: z.string().min(10, "Phone number must be at least 10 digits"),
+    firstName: z.string().min(1, "First name is required"),
+    lastName: z.string().min(1, "Last name is required"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
+// Create a comprehensive type that includes all possible fields
+type AuthFormData = {
+  email: string;
+  password: string;
+  firstName?: string;
+  lastName?: string;
+  phoneNumber?: string;
+  confirmPassword?: string;
+};
+
+// Helper function to get the appropriate schema based on mode
+const getSchema = (isLogin: boolean) => {
+  return isLogin ? LoginSchema : SignupSchema;
+};
+
+// Type guard for signup errors
+type SignupErrors = {
+  firstName?: { message: string };
+  lastName?: { message: string };
+  phoneNumber?: { message: string };
+  confirmPassword?: { message: string };
+};
+
+// --- Helper: The Isometric Illustration Panel ---
+const IsometricPanel = ({ darkMode }: { darkMode: boolean }) => {
+  return (
+    <motion.div
+      initial={{ x: 50, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      transition={{ duration: 0.6 }}
+      className={`hidden lg:flex flex-col items-center justify-center p-12 relative overflow-hidden transition-all duration-500 rounded-r-xl lg:rounded-l-[40px] lg:rounded-r-xl
+        ${
+          darkMode
+            ? "bg-gradient-to-br from-gray-800 to-gray-950"
+            : "bg-gradient-to-br from-amber-700 to-amber-950"
+        }
+      `}
+    >
+      {/* Abstract background shapes */}
+      <div
+        className={`absolute inset-0 opacity-20 transition-opacity duration-500 ${
+          darkMode ? "opacity-10" : "opacity-30"
+        }`}
+      >
+        <div
+          className={`absolute top-1/4 left-1/4 w-1/2 h-1/2 rounded-full blur-[80px] ${
+            darkMode ? "bg-cyan-500/30" : "bg-pink-300/50"
+          }`}
+        ></div>
+        <div
+          className={`absolute bottom-0 right-0 w-2/3 h-2/3 rounded-full blur-[80px] ${
+            darkMode ? "bg-purple-500/30" : "bg-cyan-300/50"
+          }`}
+        ></div>
+      </div>
+
+      {/* Content overlay */}
+      <div className="relative z-10 text-center text-white p-6">
+        <h2 className="text-3xl font-bold mt-8 mb-2">Welcome to FGRM</h2>
+        <p className="text-lg font-light opacity-90">
+          Join our community today
+        </p>
+      </div>
+    </motion.div>
+  );
+};
 
 // --- Main Component ---
 export default function AuthCard() {
   const [isLogin, setIsLogin] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [darkMode, setDarkMode] = useState(false); // For detecting Tailwind's 'dark' class
+  const [darkMode, setDarkMode] = useState(false);
 
   const {
     register,
@@ -39,22 +105,27 @@ export default function AuthCard() {
     reset,
     formState: { errors, isValid },
   } = useForm<AuthFormData>({
-    resolver: zodResolver(AuthSchema),
+    resolver: zodResolver(getSchema(isLogin)),
     mode: "onChange",
-    defaultValues: { name: "", email: "", password: "", confirmPassword: "" },
+    defaultValues: {
+      email: "",
+      password: "",
+      firstName: "",
+      lastName: "",
+      phoneNumber: "",
+      confirmPassword: "",
+    },
   });
 
-  // Listen for theme changes from parent/document (Professional practice for dynamic themes)
+  // --- Dark Mode Listener ---
   useEffect(() => {
     const checkTheme = () => {
       const isDark = document.documentElement.classList.contains("dark");
       setDarkMode(isDark);
     };
 
-    // Check initial theme
     checkTheme();
 
-    // Observe theme changes (e.g., if a navbar button toggles the 'dark' class)
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         if (mutation.attributeName === "class") {
@@ -74,24 +145,39 @@ export default function AuthCard() {
   const onSubmit = (data: AuthFormData) => {
     setSubmitting(true);
     setSuccess(false);
+    console.log("Form submitted:", data);
+
+    // Simulate API call
     setTimeout(() => {
       setSubmitting(false);
       setSuccess(true);
-      reset({ name: "", email: "", password: "", confirmPassword: "" });
+      reset({
+        email: "",
+        password: "",
+        firstName: "",
+        lastName: "",
+        phoneNumber: "",
+        confirmPassword: "",
+      });
       setTimeout(() => setSuccess(false), 2000);
-      console.log(isLogin ? "Logging in with" : "Signing up with", data);
-      // In a real app, you would dispatch an API call here.
     }, 800);
   };
 
   const toggleAuthMode = () => {
     setIsLogin(!isLogin);
-    reset(); // Clear form when switching modes for a clean slate
+    reset({
+      email: "",
+      password: "",
+      firstName: "",
+      lastName: "",
+      phoneNumber: "",
+      confirmPassword: "",
+    });
   };
 
-  // --- Styles for Reusability and Professional Look ---
+  // --- Dynamic Input Styles ---
   const inputStyle = `
-    w-full px-4 py-3 border rounded-lg focus:ring-2 transition-all duration-200
+    w-full px-4 py-3 border rounded-lg focus:ring-2 transition-all duration-200 shadow-sm
     ${
       darkMode
         ? "bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:ring-blue-500/50 focus:border-blue-500"
@@ -99,175 +185,295 @@ export default function AuthCard() {
     }
   `;
 
+  // Safe error access for signup fields
+  const signupErrors = errors as SignupErrors;
+
   return (
     <div
-      className={`min-h-screen transition-colors duration-500 flex items-center justify-center p-4 sm:p-6 ${
-        darkMode
-          ? "bg-gray-900 text-white" // Clean dark background
-          : "bg-gray-50 text-gray-900" // Clean light background
+      className={`min-h-screen flex items-center justify-center p-4 transition-colors duration-500 ${
+        darkMode ? "bg-gray-900" : "bg-gray-100"
       }`}
     >
-      {/* Subtle Background Effect (Less busy than floating blobs) */}
-      <div className="absolute inset-0 z-0 opacity-10 [mask-image:radial-gradient(ellipse_at_center,white,transparent)] pointer-events-none">
-        <div className="absolute inset-0 bg-repeat bg-[size:20px_20px] [background-image:linear-gradient(to_right,rgba(0,0,0,0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.1)_1px,transparent_1px)] dark:[background-image:linear-gradient(to_right,rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.05)_1px,transparent_1px)]"></div>
-      </div>
-
-      {/* Card: Wider, more substantial, less transparent for better focus */}
-      <motion.div
-        initial={{ y: 30, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
-        className={`w-full max-w-sm sm:max-w-md p-8 shadow-2xl rounded-xl relative z-10 transition-all duration-300
+      {/* Main Container - Stack on mobile, side-by-side on desktop */}
+      <div
+        className={`w-full max-w-lg lg:max-w-6xl h-auto lg:aspect-[16/9] shadow-2xl overflow-hidden flex flex-col lg:flex-row transition-colors duration-500
         ${
           darkMode
-            ? "bg-gray-800 border border-gray-700" // Solid dark card
-            : "bg-white border border-gray-200" // Solid light card
-        }`}
+            ? "bg-gray-900 border border-gray-700 rounded-xl"
+            : "bg-white rounded-xl"
+        }
+      `}
       >
-        <div className="flex flex-col items-center text-center">
-          {/* Header Icon/Logo - Use a more professional color */}
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", stiffness: 120, delay: 0.1 }}
-            className="mb-6 rounded-full p-3 bg-blue-500/10"
-          >
-            <Sparkles className="w-8 h-8 text-blue-500" />
-          </motion.div>
-
-          <h1 className="text-3xl font-extrabold mb-2 tracking-tight">
-            {isLogin ? "Sign In" : "Get Started"}
-          </h1>
-          <p className="text-sm mb-8 font-light">
-            {isLogin
-              ? "Welcome back! Enter your credentials to access your account."
-              : "Create your account in seconds to unlock all features."}
-          </p>
-
-          {/* Form */}
-          <form
-            className="w-full space-y-4"
-            onSubmit={handleSubmit(onSubmit)}
-            noValidate
-          >
-            {/* Name Input */}
-            {!isLogin && (
-              <div className="flex flex-col">
-                <input
-                  {...register("name")}
-                  placeholder="Full Name"
-                  className={inputStyle}
-                />
-                {errors.name && (
-                  <p className="text-red-500 text-sm mt-1 font-medium">
-                    {errors.name.message}
-                  </p>
-                )}
+        {/* --- LEFT PANEL: Login Form --- */}
+        <motion.div
+          initial={{ x: -50, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ duration: 0.6 }}
+          className={`w-full lg:w-1/2 p-6 md:p-8 lg:p-16 flex flex-col justify-between rounded-xl lg:rounded-r-[40px] lg:rounded-l-xl
+          ${darkMode ? "bg-gray-900" : "bg-white"}
+          `}
+        >
+          <div className="w-full">
+            {/* Logo/Branding */}
+            <div className="mb-8 lg:mb-12 flex items-center justify-between">
+              <div className="flex items-center">
+                <Zap className="w-6 h-6 text-amber-600 mr-2" />
+                <span
+                  className={`text-lg font-bold ${
+                    darkMode ? "text-white" : "text-gray-800"
+                  }`}
+                >
+                  FGRM
+                </span>
               </div>
-            )}
-
-            {/* Email Input */}
-            <div className="flex flex-col">
-              <input
-                {...register("email")}
-                placeholder="Email Address"
-                type="email"
-                className={inputStyle}
+              <Moon
+                className={`w-5 h-5 ${
+                  darkMode ? "text-yellow-400" : "text-gray-500"
+                }`}
               />
-              {errors.email && (
-                <p className="text-red-500 text-sm mt-1 font-medium">
-                  {errors.email.message}
-                </p>
-              )}
             </div>
 
-            {/* Password Input */}
-            <div className="flex flex-col">
-              <input
-                {...register("password")}
-                placeholder="Password"
-                type="password"
-                className={inputStyle}
-              />
-              {errors.password && (
-                <p className="text-red-500 text-sm mt-1 font-medium">
-                  {errors.password.message}
-                </p>
-              )}
-            </div>
+            <hgroup className="mb-6 lg:mb-8">
+              <h1
+                className={`text-2xl lg:text-3xl font-extrabold mb-2 ${
+                  darkMode ? "text-white" : "text-gray-900"
+                }`}
+              >
+                {isLogin ? "Welcome Back" : "Create Account"}
+              </h1>
+              <h2
+                className={`text-lg lg:text-xl font-medium ${
+                  darkMode ? "text-gray-400" : "text-gray-700"
+                }`}
+              >
+                {isLogin ? "Sign into your account" : "Join us today"}
+              </h2>
+            </hgroup>
 
-            {/* Confirm Password Input */}
-            {!isLogin && (
-              <div className="flex flex-col">
-                <input
-                  {...register("confirmPassword")}
-                  placeholder="Confirm Password"
-                  type="password"
-                  className={inputStyle}
-                />
-                {errors.confirmPassword && (
-                  <p className="text-red-500 text-sm mt-1 font-medium">
-                    {errors.confirmPassword.message}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Submit Button: Solid, professional color, proper icons */}
-            <motion.button
-              whileTap={{ scale: 0.98 }}
-              type="submit"
-              disabled={!isValid || submitting}
-              className={`w-full py-3 mt-6 rounded-lg font-semibold text-white transition-all duration-300 flex items-center justify-center space-x-2
-                ${
-                  success
-                    ? "bg-emerald-500 hover:bg-emerald-600"
-                    : "bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 dark:disabled:bg-blue-700"
-                }
-                ${
-                  !isValid || submitting
-                    ? "opacity-70 cursor-not-allowed"
-                    : "shadow-lg shadow-blue-500/50"
-                }
-              `}
+            {/* Form */}
+            <form
+              className="w-full space-y-4"
+              onSubmit={handleSubmit(onSubmit)}
+              noValidate
             >
-              {submitting ? (
-                "Processing..."
-              ) : success ? (
-                "Success! 🎉"
-              ) : isLogin ? (
+              {/* Login Form Fields */}
+              {isLogin ? (
                 <>
-                  <LogIn className="w-5 h-5" />
-                  <span>Login</span>
+                  {/* Email/Phone for Login */}
+                  <div className="flex flex-col">
+                    <input
+                      {...register("email")}
+                      placeholder="Email address"
+                      className={inputStyle}
+                    />
+                    {errors.email && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {errors.email.message}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Password for Login */}
+                  <div className="flex flex-col">
+                    <input
+                      {...register("password")}
+                      placeholder="Password"
+                      type="password"
+                      className={inputStyle}
+                    />
+                    {errors.password && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {errors.password.message}
+                      </p>
+                    )}
+                  </div>
                 </>
               ) : (
+                /* Signup Form Fields */
                 <>
-                  <UserPlus className="w-5 h-5" />
-                  <span>Sign Up</span>
+                  {/* First Name and Last Name in Row - Stack on mobile */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="flex flex-col">
+                      <input
+                        {...register("firstName")}
+                        placeholder="First name"
+                        className={inputStyle}
+                      />
+                      {signupErrors.firstName && (
+                        <p className="text-red-500 text-sm mt-1">
+                          {signupErrors.firstName.message}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex flex-col">
+                      <input
+                        {...register("lastName")}
+                        placeholder="Last name"
+                        className={inputStyle}
+                      />
+                      {signupErrors.lastName && (
+                        <p className="text-red-500 text-sm mt-1">
+                          {signupErrors.lastName.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Email */}
+                  <div className="flex flex-col">
+                    <input
+                      {...register("email")}
+                      placeholder="Email address"
+                      type="email"
+                      className={inputStyle}
+                    />
+                    {errors.email && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {errors.email.message}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Phone Number */}
+                  <div className="flex flex-col">
+                    <input
+                      {...register("phoneNumber")}
+                      placeholder="Phone number"
+                      type="tel"
+                      className={inputStyle}
+                    />
+                    {signupErrors.phoneNumber && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {signupErrors.phoneNumber.message}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Password */}
+                  <div className="flex flex-col">
+                    <input
+                      {...register("password")}
+                      placeholder="Password"
+                      type="password"
+                      className={inputStyle}
+                    />
+                    {errors.password && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {errors.password.message}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Confirm Password */}
+                  <div className="flex flex-col">
+                    <input
+                      {...register("confirmPassword")}
+                      placeholder="Confirm password"
+                      type="password"
+                      className={inputStyle}
+                    />
+                    {signupErrors.confirmPassword && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {signupErrors.confirmPassword.message}
+                      </p>
+                    )}
+                  </div>
                 </>
               )}
-            </motion.button>
-          </form>
 
-          {/* Mode Switcher */}
-          <p className="text-sm mt-6 text-center">
-            {isLogin ? "Need an account?" : "Already registered?"}
-            <button
-              onClick={toggleAuthMode}
-              className="text-blue-500 ml-1 font-medium hover:text-blue-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/50 rounded-md p-1 -m-1"
+              {/* Submit Button */}
+              <motion.button
+                whileTap={{ scale: 0.98 }}
+                type="submit"
+                disabled={!isValid || submitting}
+                className={`w-full py-3 mt-4 lg:mt-6 rounded-lg font-semibold text-white transition-all duration-300 flex items-center justify-center space-x-2
+                  ${
+                    success
+                      ? "bg-emerald-500 hover:bg-emerald-600"
+                      : "bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 dark:disabled:bg-blue-700"
+                  }
+                  ${
+                    !isValid || submitting
+                      ? "opacity-70 cursor-not-allowed"
+                      : "shadow-md shadow-blue-500/50"
+                  }
+                  ${
+                    darkMode
+                      ? "bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600"
+                      : "bg-gradient-to-r from-amber-800 to-amber-950 hover:from-blue-500 hover:to-amber-500 shadow-blue-500/40"
+                  }
+                `}
+              >
+                {submitting ? (
+                  "Processing..."
+                ) : success ? (
+                  "Success!"
+                ) : isLogin ? (
+                  <>
+                    <LogIn className="w-5 h-5" />
+                    <span>Log In</span>
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="w-5 h-5" />
+                    <span>Sign Up</span>
+                  </>
+                )}
+              </motion.button>
+
+              {/* Forgot Password Link */}
+              {isLogin && (
+                <div className="text-center pt-2">
+                  <a
+                    href="#"
+                    className={`text-sm font-medium hover:text-blue-500 transition-colors ${
+                      darkMode ? "text-gray-400" : "text-gray-500"
+                    }`}
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    Forgot Password?
+                  </a>
+                </div>
+              )}
+            </form>
+
+            {/* Mode Switcher */}
+            <p
+              className={`text-sm mt-6 lg:mt-8 text-center ${
+                darkMode ? "text-gray-400" : "text-gray-500"
+              }`}
             >
-              {isLogin ? "Create Account" : "Sign In"}
-            </button>
-          </p>
-        </div>
+              {isLogin ? "Need an account?" : "Already have an account?"}
+              <button
+                onClick={toggleAuthMode}
+                className="text-blue-600 ml-1 font-semibold hover:text-blue-500 transition-colors focus:outline-none"
+              >
+                {isLogin ? "Sign Up" : "Log In"}
+              </button>
+            </p>
+          </div>
 
-        {/* Footer (Moved inside the card for better composition) */}
-        <footer className="pt-6 mt-6 border-t border-gray-200 dark:border-gray-700 text-center">
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            &copy; 2025 Feedback and Grievance Redress Mechanism.
-          </p>
-        </footer>
-      </motion.div>
+          {/* Footer */}
+          <footer
+            className={`pt-6 mt-6 border-t ${
+              darkMode ? "border-gray-700" : "border-gray-200"
+            } text-center`}
+          >
+            <p
+              className={`text-xs ${
+                darkMode ? "text-gray-500" : "text-gray-400"
+              }`}
+            >
+              &copy; 2025 Ghana Cocoa Board (COCOBOD). All Rights Reserved.
+            </p>
+          </footer>
+        </motion.div>
+
+        {/* --- RIGHT PANEL: Isometric Illustration --- */}
+        <div className="w-full lg:w-1/2">
+          <IsometricPanel darkMode={darkMode} />
+        </div>
+      </div>
     </div>
   );
 }
